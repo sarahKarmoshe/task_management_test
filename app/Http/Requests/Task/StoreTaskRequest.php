@@ -26,7 +26,7 @@ class StoreTaskRequest extends FormRequest
     {
         return [
             'title'       => ['required', 'string', 'max:160'],
-            'description' => ['nullable', 'string'],
+            'description' => ['required', 'string'],
             'status'      => ['nullable', new Enum(TaskStatus::class)],
             'images'      => ['sometimes','array','min:1'],
             'images.*'    => ['file','image','mimes:jpg,jpeg,png,webp','max:5120'],

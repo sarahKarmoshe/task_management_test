@@ -6,6 +6,7 @@ use App\Enums\TaskStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Task extends Model
 {
@@ -51,5 +52,9 @@ class Task extends Model
             $qq->where('title', 'like', "%{$term}%")
                 ->orWhere('description', 'like', "%{$term}%");
         });
+    }
+    public function previewImage(): HasOne
+    {
+        return $this->hasOne(TaskImage::class)->oldestOfMany();
     }
 }

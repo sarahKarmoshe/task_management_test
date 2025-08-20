@@ -61,7 +61,7 @@ class TaskService
      */
     private function attachImages(Task $task, array $files): void
     {
-        $dir = "tasks/{$task->id}/images";
+        $dir = "tasks/images";
         $storedMetas = [];
 
         try {

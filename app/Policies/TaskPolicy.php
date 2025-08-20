@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\UserRole;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
@@ -21,7 +22,7 @@ class TaskPolicy
      */
     public function update(User $user, Task $task): bool
     {
-        return $task->user_id === $user->id;
+        return $task->user_id === $user->id || $user->role->value === UserRole::Admin->value;
     }
 
     /**
@@ -29,7 +30,7 @@ class TaskPolicy
      */
     public function delete(User $user, Task $task): bool
     {
-        return $task->user_id === $user->id;
+        return $task->user_id === $user->id || $user->role->value === UserRole::Admin->value;
     }
 
     /**
