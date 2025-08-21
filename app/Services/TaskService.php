@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Task;
 use App\Models\TaskImage;
 use App\Models\User;
+use App\Notifications\TaskStatusChangedNotification;
 use App\Traits\UploadFiles;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -31,7 +32,7 @@ class TaskService
         return Task::query()
             ->status($status)
             ->search($term)
-            ->with(['images' => fn($q) => $q->select('id','task_id','path','original_name')
+            ->with(['images' => fn($q) => $q->select('id', 'task_id', 'path', 'original_name')
                 ->orderBy('id')->limit(1)])
             ->orderByDesc('id')
             ->paginate($perPage)
@@ -97,25 +98,45 @@ class TaskService
 
     public function update(Task $task, array $data, array $newImages = [], array $deleteImageIds = []): Task
     {
-        return DB::transaction(function () use ($task, $data, $newImages, $deleteImageIds) {
-            // 1) fields
+        $statusChanged = false;
+        $oldStatus = (string) $task->status->value;
+        $newStatus = $oldStatus;
+
+        $task = DB::transaction(function () use ($task, $data, $newImages, $deleteImageIds, &$statusChanged, &$newStatus) {
+
             $payload = Arr::only($data, ['title', 'description', 'status']);
-            if ($payload) {
+
+            if (!empty($payload)) {
+                // detect status change BEFORE update
+                if (array_key_exists('status', $payload) && $payload['status'] !== (string) $task->status->value) {
+                    $statusChanged = true;
+                    $newStatus = (string) $payload['status'];
+                }
+
                 $task->update($payload);
             }
 
-            // 2) delete selected images
-            if ($deleteImageIds) {
+            // delete selected images
+            if (!empty($deleteImageIds)) {
                 $this->deleteImages($task, $deleteImageIds);
             }
 
-            // 3) append new images
-            if ($newImages) {
+            // append new images
+            if (!empty($newImages)) {
                 $this->attachImages($task, $newImages);
             }
 
             return $task->load('images:id,task_id,path,original_name');
         });
+
+        if ($statusChanged && $task->user) {
+            $task->refresh();
+
+            $task->user->notify(
+                new TaskStatusChangedNotification($task, $oldStatus, $newStatus)
+            );
+        }
+        return $task;
     }
 
     private function deleteImages(Task $task, array $ids): void
